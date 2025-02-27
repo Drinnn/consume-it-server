@@ -1,7 +1,20 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/Drinnn/consume-it/pb"
+	"google.golang.org/protobuf/proto"
+)
 
 func main() {
-	fmt.Println("Hello, World!")
+	packet := pb.NewChatPacket(1, "Hello, World!")
+
+	data, err := proto.Marshal(packet)
+	if err != nil {
+		fmt.Println("Error marshalling packet:", err)
+		return
+	}
+
+	fmt.Println("Marshalled packet:", data)
 }
