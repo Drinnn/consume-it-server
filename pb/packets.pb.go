@@ -116,7 +116,7 @@ type Packet struct {
 	//
 	//	*Packet_Chat
 	//	*Packet_Id
-	Msg           isPacket_Msg `protobuf_oneof:"msg"`
+	Msg           Msg `protobuf_oneof:"msg"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
