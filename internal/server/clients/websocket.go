@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/Drinnn/consume-it/internal/server"
+	"github.com/Drinnn/consume-it/internal/server/states"
 	"github.com/Drinnn/consume-it/pb"
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/proto"
@@ -16,6 +17,7 @@ type WebSocketClient struct {
 	conn        *websocket.Conn
 	hub         *server.Hub
 	sendChannel chan *pb.Packet
+	state       server.ClientStateMachineHandler
 	logger      *log.Logger
 }
 
@@ -47,18 +49,35 @@ func (c *WebSocketClient) Id() uint64 {
 }
 
 func (c *WebSocketClient) ProcessMessage(senderId uint64, message pb.Msg) {
-	if senderId == c.id {
-		c.Broadcast(message)
-	} else {
-		c.SocketSendAs(message, senderId)
-	}
+	c.state.HandleMessage(senderId, message)
 }
 
 func (c *WebSocketClient) Initialize(id uint64) {
 	c.id = id
 	c.logger.SetPrefix(fmt.Sprintf("Client %d: ", id))
-	c.SocketSend(pb.NewIdPacket(c.id))
-	c.logger.Printf("Sent ID to client")
+	c.SetState(&states.Connected{})
+}
+
+func (c *WebSocketClient) SetState(state server.ClientStateMachineHandler) {
+	prevStateName := "None"
+	if c.state != nil {
+		prevStateName = c.state.Name()
+		c.state.OnExit()
+	}
+
+	newStateName := "None"
+	if state != nil {
+		newStateName = state.Name()
+	}
+
+	c.logger.Printf("Switching from state %s to %s", prevStateName, newStateName)
+
+	c.state = state
+
+	if c.state != nil {
+		c.state.SetClient(c)
+		c.state.OnEnter()
+	}
 }
 
 func (c *WebSocketClient) SocketSend(message pb.Msg) {
@@ -150,6 +169,8 @@ func (c *WebSocketClient) ReadPump() {
 
 func (c *WebSocketClient) Close(reason string) {
 	c.logger.Printf("Closing client: %s", reason)
+
+	c.SetState(nil)
 
 	c.hub.UnregisterChan <- c
 	c.conn.Close()

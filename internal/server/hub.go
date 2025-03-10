@@ -8,32 +8,32 @@ import (
 	"github.com/Drinnn/consume-it/pb"
 )
 
+type ClientStateMachineHandler interface {
+	Name() string
+
+	SetClient(client ClientInterfacer)
+
+	OnEnter()
+	OnExit()
+
+	HandleMessage(senderId uint64, message pb.Msg)
+}
+
 type ClientInterfacer interface {
 	Id() uint64
-	ProcessMessage(senderId uint64, message pb.Msg)
 
-	// Sets the client's ID and anything else that needs to be initialized
 	Initialize(id uint64)
+	SetState(state ClientStateMachineHandler)
 
-	// Puts data from this client in the write pump
 	SocketSend(message pb.Msg)
-
-	// Puts data from another client in the write pump
 	SocketSendAs(message pb.Msg, senderId uint64)
-
-	// Forward message to another client for processing
 	PassToPeer(message pb.Msg, peerId uint64)
-
-	// Forward message to all other clients for processing
 	Broadcast(message pb.Msg)
 
-	// Pump data from the client directly to the connected socket
 	WritePump()
-
-	// Pump data from the connected socket directly to the client
 	ReadPump()
 
-	// Close the client's connections and cleanup
+	ProcessMessage(senderId uint64, message pb.Msg)
 	Close(reason string)
 }
 
