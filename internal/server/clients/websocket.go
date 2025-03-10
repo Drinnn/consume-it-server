@@ -46,11 +46,19 @@ func (c *WebSocketClient) Id() uint64 {
 	return c.id
 }
 
-func (c *WebSocketClient) ProcessMessage(senderId uint64, message pb.Msg) {}
+func (c *WebSocketClient) ProcessMessage(senderId uint64, message pb.Msg) {
+	if senderId == c.id {
+		c.Broadcast(message)
+	} else {
+		c.SocketSendAs(message, senderId)
+	}
+}
 
 func (c *WebSocketClient) Initialize(id uint64) {
 	c.id = id
 	c.logger.SetPrefix(fmt.Sprintf("Client %d: ", id))
+	c.SocketSend(pb.NewIdPacket(c.id))
+	c.logger.Printf("Sent ID to client")
 }
 
 func (c *WebSocketClient) SocketSend(message pb.Msg) {
@@ -66,7 +74,7 @@ func (c *WebSocketClient) SocketSendAs(message pb.Msg, senderId uint64) {
 }
 
 func (c *WebSocketClient) PassToPeer(message pb.Msg, peerId uint64) {
-	if peer, exists := c.hub.Clients[peerId]; exists {
+	if peer, exists := c.hub.Clients.Get(peerId); exists {
 		peer.ProcessMessage(c.id, message)
 	}
 }
